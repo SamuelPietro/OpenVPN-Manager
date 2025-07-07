@@ -35,7 +35,17 @@ Ideal para provedores, empresas ou entusiastas que precisam gerenciar múltiplas
      apt update && apt install openvpn easy-rsa -y
      ```
 
-3. **Execução:**
+3. **Configuração**
+   
+   **IP do Servidor:** Altere a variável `IP_SERVER` no script para o IP do seu servidor. Isso apenas preenche o valor padrão nos arquivos de configuração gerados. Se não configurar, não impactará o funcionamento do script.
+
+   **Configuração de Redes:** As redes VPN serão criadas, por padrão, no formato `10.8.x.y`, onde:
+   - `x` representa a camada da rede da respectiva VPN
+   - `y` representa o IP fixo do usuário
+
+   Você pode ajustar o prefixo das redes alterando a variável `PREFIXO_REDE` no script.
+
+4. **Execução:**
    ```bash
    sudo ./openvpn-manager.sh
    ```
