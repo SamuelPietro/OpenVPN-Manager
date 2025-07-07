@@ -3,7 +3,8 @@
 EASYRSA_DIR="/etc/openvpn/easy-rsa"
 OPENVPN_DIR="/etc/openvpn"
 OVPN_EXPORT_DIR="/etc/openvpn/ovpn-files"
-IP_SERVER="103.177.249.143"
+IP_SERVER="xxx.xxx.xxx.xxx"
+PREFIXO_REDE="10.8"
 
 mkdir -p "$EASYRSA_DIR" "$OVPN_EXPORT_DIR"
 
@@ -30,7 +31,7 @@ function criar_servidor() {
     read -p "Informe o NOME da instância (ex: cliente): " INSTANCIA
     read -p "Informe a PORTA desejada (ex: 1195): " PORTA
     read -p "Informe o NÚMERO da rede ethernet (ex: 10 para ethernet10): " REDE_NUM
-    REDE="10.8.${REDE_NUM}.0"
+    REDE="${PREFIXO_REDE}.${REDE_NUM}.0"
 
     cd "$EASYRSA_DIR" || exit
     ./easyrsa gen-req "${INSTANCIA}-server" nopass
@@ -86,7 +87,7 @@ function criar_rede() {
 
     read -p "Informe a NOVA PORTA para essa rede (ex: 1196): " PORTA
     read -p "Informe o NÚMERO da nova rede ethernet (ex: 11 para ethernet11): " REDE_NUM
-    REDE="10.8.${REDE_NUM}.0"
+    REDE="${PREFIXO_REDE}.${REDE_NUM}.0"
 
     mkdir -p "$OPENVPN_DIR/$INSTANCIA/ethernet${REDE_NUM}"
 
