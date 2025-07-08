@@ -275,6 +275,75 @@ function listar_usuarios() {
     read -p "Pressione ENTER para continuar..."
 }
 
+function listar_conexoes() {
+    read -p "Informe o NOME da instância (ex: cliente): " INSTANCIA
+    read -p "Informe o NÚMERO da rede (ex: 10 para ethernet10): " REDE_NUM
+
+    STATUS_LOG="$OPENVPN_DIR/$INSTANCIA/ethernet${REDE_NUM}/status.log"
+
+    if [ ! -f "$STATUS_LOG" ]; then
+        echo "❌ Arquivo de status não encontrado em: $STATUS_LOG"
+    else
+        echo "🔍 Conexões Ativas da Instância '$INSTANCIA' - Rede ethernet${REDE_NUM}:"
+        echo "Usuário                      | IP Virtual     | IP Real (porta)        | Bytes RX    | Bytes TX    | Desde"
+        echo "-------------------------------------------------------------------------------------------------------------"
+
+        # Processar o arquivo de status do OpenVPN
+        awk -F',' -v ccd_dir="$OPENVPN_DIR/$INSTANCIA/ccd" '
+        /^OpenVPN CLIENT LIST/ { in_client_list = 1; next }
+        /^ROUTING TABLE/ { in_client_list = 0; exit }
+        /^Common Name,Real Address/ { next }
+        /^Updated,/ { next }
+        in_client_list && NF >= 4 {
+            usuario_completo = $1
+            ip_real = $2
+            bytes_rx = $3
+            bytes_tx = $4
+            since = $5
+            if (NF > 5) {
+                for (i = 6; i <= NF; i++) {
+                    since = since " " $i
+                }
+            }
+            
+            # Extrair apenas o nome do usuário (última parte após o último hífen)
+            split(usuario_completo, partes, "-")
+            usuario = partes[length(partes)]
+            
+            # Verificar IP virtual no arquivo CCD
+            ip_virtual = "-"
+            ccd_file = ccd_dir "/" usuario_completo
+            if (system("test -f " ccd_file) == 0) {
+                cmd = "grep ifconfig-push " ccd_file " | awk \"{print \\$2}\""
+                cmd | getline ip_virtual
+                close(cmd)
+            }
+            
+            # Formatar bytes para melhor legibilidade
+            if (bytes_rx >= 1024*1024) {
+                bytes_rx_fmt = sprintf("%.1fM", bytes_rx/1024/1024)
+            } else if (bytes_rx >= 1024) {
+                bytes_rx_fmt = sprintf("%.1fK", bytes_rx/1024)
+            } else {
+                bytes_rx_fmt = bytes_rx
+            }
+            if (bytes_tx >= 1024*1024) {
+                bytes_tx_fmt = sprintf("%.1fM", bytes_tx/1024/1024)
+            } else if (bytes_tx >= 1024) {
+                bytes_tx_fmt = sprintf("%.1fK", bytes_tx/1024)
+            } else {
+                bytes_tx_fmt = bytes_tx
+            }
+            printf "%-28s | %-13s | %-21s | %-10s | %-10s | %s\n", usuario, ip_virtual, ip_real, bytes_rx_fmt, bytes_tx_fmt, since
+        }' "$STATUS_LOG"
+
+        echo "-------------------------------------------------------------------------------------------------------------"
+    fi
+
+    read -p "Pressione ENTER para voltar..."
+}
+
+
 function excluir_cliente() {
     read -p "Informe o NOME do cliente/instância a excluir (ex: cliente): " INSTANCIA
 
@@ -390,6 +459,22 @@ function revogar_usuario() {
     read -p "Pressione ENTER para continuar..."
 }
 
+function visualizar_logs() {
+    read -p "Informe o NOME da instância (ex: cliente): " INSTANCIA
+    read -p "Informe o NÚMERO da rede (ex: 10 para ethernet10): " REDE_NUM
+
+    OPENVPN_LOG="$OPENVPN_DIR/$INSTANCIA/ethernet${REDE_NUM}/openvpn.log"
+
+    if [ ! -f "$OPENVPN_LOG" ]; then
+        echo "❌ Log não encontrado em: $OPENVPN_LOG"
+    else
+        echo "====== Últimas 30 Linhas do Log ======"
+        tail -n 30 "$OPENVPN_LOG"
+    fi
+
+    read -p "Pressione ENTER para voltar..."
+}
+
 while true; do
     clear
     echo "===== GERENCIADOR OPENVPN - StarUp ====="
@@ -399,11 +484,11 @@ while true; do
     echo "4 - Criar Novo Usuário para Cliente/Instância Existente"
     echo "5 - Listar Redes Existentes"
     echo "6 - Listar Usuários Existentes"
-	echo "7 - Excluir Usuário de Cliente/Instância"
-	echo "8 - Excluir Rede de Cliente/Instância"
-	echo "9 - Excluir Cliente/Instância Inteira"
-
-
+	echo "7 - Listar Conexões Ativas"
+	echo "8 - Excluir Usuário de Cliente/Instância"
+	echo "9 - Excluir Rede de Cliente/Instância"
+	echo "10 - Excluir Cliente/Instância Inteira"
+	echo "11 - Visualizar Logs"
     echo "0 - Sair"
 
     read -p "Escolha uma opção: " OPC
@@ -415,9 +500,11 @@ while true; do
         4) criar_usuario ;;
         5) listar_redes ;;
         6) listar_usuarios ;;
-		7) excluir_usuario ;;
-        8) excluir_rede ;;
-        9) excluir_cliente ;;
+		7) listar_conexoes ;;
+        8) excluir_usuario ;;
+        9) excluir_rede ;;
+        10) excluir_cliente ;;
+		11) visualizar_logs ;;
         0) exit 0 ;;
         *) echo "❌ Opção inválida"; read -p "Pressione ENTER para voltar ao menu..." ;;
     esac
